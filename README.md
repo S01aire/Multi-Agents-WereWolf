@@ -53,7 +53,7 @@ openagents studio -s
 python -m agents.god
 ```
 
-启动agents/player.py脚本：
+启动agents/player.py脚本（以下两种方式二选一）：
 
 ```bash
 #使用start_all_players.py快速启动
