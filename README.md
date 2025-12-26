@@ -68,3 +68,9 @@ python -m agents.player playerE
 python -m agents.player playerF
 ```
 
+
+
+### 快速了解
+
+[系统架构](assets/architecture.png)
+
