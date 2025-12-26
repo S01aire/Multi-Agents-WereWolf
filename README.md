@@ -72,5 +72,4 @@ python -m agents.player playerF
 
 ### 快速了解
 
-[系统架构](assets/architecture.png)
-
+![系统架构](assets/architecture.png)
