@@ -1,0 +1,5 @@
+openagents==0.7.9
+openai==2.14.0
+python-dotenv==1.2.1
+redis==7.1.0
+
