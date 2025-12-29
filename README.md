@@ -72,4 +72,21 @@ python -m agents.player playerF
 
 ### 快速了解
 
+#### 相关链接
+
+演示视频：[基于多智能体的狼人杀_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1PSvBBTEj8/)
+
+#### 项目架构
+
+本项目采用中心化多智能体系统，**god智能体**分别与其他**player智能体**通信，player智能体之间不能相互通信。god智能体控制游戏进度，并通过通信向player智能体发送指令。player智能体之间的交互通过**Environment**间接完成，智能体的行动会改变Environment中的信息，同时智能体可以通过**Tools**获取Environment中的信息。
+
 ![系统架构](assets/architecture.png)
+
+**player.py**在运行后加载特定角色的提示词，成为狼人杀中的某个角色。
+
+![玩家角色](D:\0AIAgent\openagents_project\werewolf\assets\player.png)
+
+#### 游戏逻辑
+
+！[游戏逻辑](assets/game_logic.png)
+

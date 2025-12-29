@@ -90,7 +90,7 @@ class GodAgent(WorkerAgent):
 
         ws = self.workspace()
 
-        if message.startswith('Action'):
+        if message.startswith('Execute'):
             match self.action_turn:
                 case Action6.WOLF1_KILL:
                     if source_id == self.actions[Role.WOLF][0]:
@@ -230,12 +230,12 @@ class GodAgent(WorkerAgent):
                     await self._start_actions()
                     return
                 wolf = self.actions[Role.WOLF][0]
-                logger.info('向狼人1(%s)发送Action请求...', wolf)
+                logger.info('向狼人1(%s)发送Execute请求...', wolf)
                 await ws.agent(wolf).send(
-                'Action:请选择击杀目标，得到结果后进入最终回答阶段。\n'
+                'Execute:请选择击杀目标，得到结果后进入最终回答阶段。\n'
                 '如果本次输出为<final_answer>，输出内容请按照最终回复格式。\n'
-                '最终回复格式：Action:目标玩家id\n'
-                '例如：Action:playerA'
+                '最终回复格式：Execute:目标玩家id\n'
+                '例如：Execute:playerA'
             )
             case Action6.WOLF2_KILL:
                 if len(self.actions[Role.WOLF]) < 2:
@@ -244,12 +244,12 @@ class GodAgent(WorkerAgent):
                     await self._start_actions()
                     return
                 wolf = self.actions[Role.WOLF][1]
-                logger.info('向狼人2(%s)发送Action请求...', wolf)
+                logger.info('向狼人2(%s)发送Execute请求...', wolf)
                 await ws.agent(wolf).send(
-                'Action:请选择击杀目标，得到结果后进入最终回答阶段。\n'
+                'Execute:请选择击杀目标，得到结果后进入最终回答阶段。\n'
                 '如果本次输出为<final_answer>，输出内容请按照最终回复格式。\n'
-                '最终回复格式：Action:目标玩家id\n'
-                '例如：Action:playerA'
+                '最终回复格式：Execute:目标玩家id\n'
+                '例如：Execute:playerA'
             )
             case Action6.SEER_SEE:
                 await ws.channel('general').post('预言家请选择查看目标...')
@@ -259,12 +259,12 @@ class GodAgent(WorkerAgent):
                     await self._start_actions()
                     return
                 seer = self.actions[Role.SEER][0]
-                logger.info('向预言家(%s)发送Action请求...', seer)
+                logger.info('向预言家(%s)发送Execute请求...', seer)
                 await ws.agent(seer).send(
-                'Action:请选择预言目标，得到结果后进入最终回答阶段。\n'
+                'Execute:请选择预言目标，得到结果后进入最终回答阶段。\n'
                 '如果本次输出为<final_answer>，输出内容请按照最终回复格式。\n'
-                '最终回复格式:Action:目标玩家id\n'
-                '例如:Action:playerA'
+                '最终回复格式:Execute:目标玩家id\n'
+                '例如:Execute:playerA'
             )
             case Action6.WITCH_CURE:
                 await ws.channel('general').post('女巫请选择是否使用解药...')
@@ -281,24 +281,25 @@ class GodAgent(WorkerAgent):
                     await self._start_actions()
                     return
                 killed_player = await environment.get_player_killed_tonight()
-                if killed_player is None:
+                if killed_player is None or killed_player == witch:
                     await ws.agent(witch).send(
-                        'Action:今晚没有玩家被杀害，无法使用解药，进入最终回答阶段。\n'
+                        'Execute:今晚没有玩家被杀害或者今晚被杀害的玩家是女巫自己，无法使用解药，进入最终回答阶段。\n'
                         '如果本次输出为<final_answer>，输出内容请按照最终回复格式。\n'
-                        '最终回复格式：Action:目标玩家id\n'
-                        '例如：Action:playerA'
+                        '最终回复格式：Execute:不使用解药\n'
+                        '例如：Execute:不使用解药'
                     )
                 else:
                     await ws.agent(witch).send(
-                    f'Action:今晚{killed_player}被杀了，请问需要使用解药吗。当你做出行动之后进入最终回答阶段。\n'
+                    f'Execute:今晚{killed_player}被杀了，请问需要使用解药吗。当你做出行动之后进入最终回答阶段。\n'
                     '注意：如果你今晚使用解药，你将无法使用毒药。如果你想在本晚使用毒药，请选择不使用解药。\n'
                     '注意：如果你今晚选择解救目标玩家，必须使用对应的解药工具。\n'
+                    '注意：女巫不能解救自己。\n'
                     '如果本次输出为<final_answer>，输出内容请按照最终回复格式。\n'
-                    '最终回复格式：Action:选择\n'
-                    '例如：Action:使用、Action:不使用'
+                    '最终回复格式：Execute:选择\n'
+                    '例如：Execute:使用、Execute:不使用'
                     )
             
-                logger.info('向女巫(%s)发送Action请求...', witch)
+                logger.info('向女巫(%s)发送Execute请求...', witch)
                 
             case Action6.WITCH_POISON:
                 await ws.channel('general').post('女巫请选择是否使用毒药...')
@@ -315,13 +316,13 @@ class GodAgent(WorkerAgent):
                     self.action_turn = Action6.END_NIGHT
                     await self._start_actions()
                     return
-                logger.info('向女巫(%s)发送Action请求...', witch)
+                logger.info('向女巫(%s)发送Execute请求...', witch)
                 await ws.agent(witch).send(
-                'Action:请选择毒杀目标，选择完成后进入最终回答阶段。\n'
+                'Execute:请选择毒杀目标，选择完成后进入最终回答阶段。\n'
                 '注意：如果你今晚选择毒杀目标玩家，必须使用对应的毒药工具。\n'
                 '如果本次输出为<final_answer>，输出内容请按照最终回复格式。\n'
-                '最终回复格式：Action:目标玩家id\n'
-                '例如：Action:playerA'
+                '最终回复格式：Execute:目标玩家id\n'
+                '例如：Execute:playerA'
             )
             case Action6.END_NIGHT:
                 self.action_turn = Action6.WOLF1_KILL

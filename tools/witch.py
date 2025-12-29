@@ -9,6 +9,7 @@ async def cure(self_id: str) -> str:
     使用解药解救今晚被杀害的目标,你仅有一瓶解药，且每个晚上只能使用解药或毒药中的一个。
     注意：如果你今晚选择解救目标玩家，必须使用该工具。
     注意：该工具只能在晚上行动阶段使用，不能在发言和投票阶段使用。
+    注意：女巫不能解救自己。
     Args:
         self_id: 玩家id(系统自动注入，无需手动传入)
     Returns:
@@ -29,6 +30,9 @@ async def cure(self_id: str) -> str:
         logger.error('今晚没有玩家被杀害，无法使用解药。')
         environment.add_player_memory(self_id, '今晚没有玩家被杀害，无法使用解药。')
         return '今晚没有玩家被杀害，无法使用解药。'
+    if target_id == self_id:
+        logger.info('女巫不能解救自己，当前玩家%s的target_id为%s', self_id, target_id)
+        return '女巫不能解救自己，放弃使用解药，进入最终回答阶段，你只能回答不使用解药。'
     
     await environment.use_cure()
     await environment.set_cure_tonight(True)

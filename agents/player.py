@@ -40,10 +40,10 @@ class PlayerAgent(WorkerAgent):
         self._agent_config = agent_config
 
         self._client = AsyncOpenAI(
-            api_key=agent_config.api_key,
-            base_url=agent_config.api_base
+            api_key=api_key,
+            base_url=base_url
         )
-        self.model = 'deepseek-chat'
+        self.model = model_name
 
         self.role = Role.SEER
         self.role_instructions = None   #系统提示词
@@ -77,15 +77,15 @@ class PlayerAgent(WorkerAgent):
             self.role_instructions = role_prompt
             self._agent_config.instruction = self.role_instructions
             
-        elif message.startswith('Action'):    #获取执行动作
+        elif message.startswith('Execute'):    #获取执行动作
             instructions = message.split(':', 1)[1].strip()
-            logger.info('获取Action:%s', instructions)
+            logger.info('获取Execute:%s', instructions)
             messages = [
                 {'role': 'system', 'content': self.role_instructions},
                 {'role': 'user', 'content': instructions},
             ]
             await self._run(messages)
-            await ws.agent('god').send(f'Action')
+            await ws.agent('god').send(f'Execute')
 
         elif message.startswith('Speech'):    #获取发言
             instructions = message.split(':', 1)[1].strip()
@@ -141,7 +141,9 @@ class PlayerAgent(WorkerAgent):
 
     async def _run(self, messages):
         ws = self.workspace()
-
+        max_parse_retries = 3
+        parse_retry_count = 0
+        
         while True:
             #1.请求模型
             logger.info('请求模型')
@@ -197,9 +199,61 @@ class PlayerAgent(WorkerAgent):
             logger.info('检测Action')
             action_match = re.search(r'<action>(.*?)</action>', response, re.DOTALL)
             if not action_match:
-                raise RuntimeError('模型未输出<action>')
+                # 检查是否是直接输出的投票格式
+                vote_match = re.search(r'Vote:\s*(\w+)', response, re.IGNORECASE)
+                if vote_match:
+                    vote_target = vote_match.group(1)
+                    logger.info('检测到直接投票格式（无标签）: Vote:%s', vote_target)
+                    return f'Vote:{vote_target}'
+                
+                # 检查是否是直接输出的发言格式
+                speech_match = re.search(r'Speech:\s*(.+)', response, re.IGNORECASE | re.DOTALL)
+                if speech_match:
+                    speech_content = speech_match.group(1).strip()
+                    logger.info('检测到直接发言格式（无标签）: Speech:%s', speech_content)
+                    return f'Speech:{speech_content}'
+                
+                # 解析失败，尝试重试
+                parse_retry_count += 1
+                if parse_retry_count <= max_parse_retries:
+                    logger.warning('模型输出格式不正确，尝试重新请求 (第 %d/%d 次)', parse_retry_count, max_parse_retries)
+                    # 添加提示信息，要求模型使用正确的格式
+                    error_msg = (
+                        '你的输出格式不正确。请使用以下格式之一：\n'
+                        '1. <final_answer>你的答案</final_answer>\n'
+                        '2. <action>工具名称(参数)</action>\n'
+                        '3. 直接输出 Vote:玩家id 或 Speech:发言内容\n'
+                        '请重新输出正确的格式。'
+                    )
+                    messages.append({"role": "user", "content": f"<error>{error_msg}</error>"})
+                    continue  # 重新请求模型
+                else:
+                    logger.error('解析失败，已重试 %d 次，放弃', max_parse_retries)
+                    raise RuntimeError('模型未输出<action>、<final_answer>或有效的投票/发言格式，已重试多次')
+            
+            # 成功解析 action，重置重试计数
+            parse_retry_count = 0
             action = action_match.group(1)
-            tool_name, args = self._parse_action(action)
+            
+            try:
+                tool_name, args = self._parse_action(action)
+            except Exception as e:
+                # 解析 action 字符串失败，也尝试重试
+                parse_retry_count += 1
+                if parse_retry_count <= max_parse_retries:
+                    logger.warning('Action 字符串解析失败: %s，尝试重新请求 (第 %d/%d 次)', str(e), parse_retry_count, max_parse_retries)
+                    error_msg = (
+                        f'你的 action 格式不正确：{action}\n'
+                        '正确格式应该是：<action>工具名称(参数1, 参数2)</action>\n'
+                        '例如：<action>check_alive_players()</action> 或 <action>check_identity("playerA")</action>\n'
+                        '请重新输出正确的格式。'
+                    )
+                    messages.append({"role": "user", "content": f"<error>{error_msg}</error>"})
+                    continue  # 重新请求模型
+                else:
+                    logger.error('Action 解析失败，已重试 %d 次: %s', max_parse_retries, str(e))
+                    raise RuntimeError(f'无法解析 action 字符串: {action}，已重试多次')
+            
             logger.info('Action: %s:%s', tool_name, args)
 
             try:
