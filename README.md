@@ -84,9 +84,8 @@ python -m agents.player playerF
 
 **player.py**在运行后加载特定角色的提示词，成为狼人杀中的某个角色。
 
-![玩家角色](D:\0AIAgent\openagents_project\werewolf\assets\player.png)
+![玩家角色](assets\player.png)
 
 #### 游戏逻辑
 
-！[游戏逻辑](assets/game_logic.png)
-
+![游戏逻辑](assets/game_logic.png)
